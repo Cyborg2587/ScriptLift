@@ -25,7 +25,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     try {
       if (view === 'reset') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.href,
+          redirectTo: window.location.origin,
         });
         if (error) throw error;
         setMessage("If an account exists with this email, you will receive a password reset link shortly.");
@@ -43,16 +43,23 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           email,
           password,
           options: {
-            data: { name: name || email.split('@')[0] }
+            data: { name: name || email.split('@')[0] },
+            // Important: This ensures the email link points back to this specific app URL
+            emailRedirectTo: window.location.origin, 
           }
         });
 
         if (error) throw error;
 
-        if (data.user) {
-          // Create profile entry
-          // We try-catch this specific part so if the DB table is missing,
-          // the user is still allowed to log in (auth works independently of the profile table)
+        // If session is null, it means email confirmation is required
+        if (data.user && !data.session) {
+          setMessage("Account created! Please check your email to confirm your account before logging in.");
+          setLoading(false);
+          return;
+        }
+
+        if (data.user && data.session) {
+          // Create profile entry only if we have a valid session
           try {
             await upsertProfile({
               id: data.user.id,

@@ -8,6 +8,7 @@ import { saveProject, getAllProjects, getProjectFile, updateProject, deleteProje
 import { uploadFileToCloud, createCloudProject, getCloudProjects, updateCloudProject, deleteCloudProject, getCloudFileUrl, downloadCloudFile } from './services/cloudService';
 import { downloadPdf, downloadTxt, downloadDoc } from './services/exportService';
 import { supabase } from './services/supabaseClient';
+import { upsertProfile } from './services/userService';
 import { UploadCloud, Clock, FileText, File as FileIcon, FileVideo, Download, Loader2, Users, Mic, PlayCircle, ExternalLink, ArrowLeft, Lock, Trash2, CheckCircle, AlertCircle, HardDrive, Cloud } from 'lucide-react';
 
 // Shared View Component (Unchanged)
@@ -155,12 +156,63 @@ const App: React.FC = () => {
 
 
   // --- Initialization ---
+  
+  const handleLogin = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    setProjects([]);
+    setSelectedProjectId(null);
+    setMediaUrl(null);
+    setViewMode('dashboard');
+    supabase.auth.signOut();
+  };
+
   useEffect(() => {
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-    }
+    // 1. Initial Check: See if we have a session (handles redirect from email link)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0]
+        };
+        handleLogin(userData);
+        
+        // Ensure profile exists (in case it wasn't created during signup due to pending email)
+        upsertProfile(userData).catch(e => console.log('Profile upsert check', e));
+      } else {
+         // Fallback to local storage if no Supabase session (offline dev)
+         const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+         if (storedUser) {
+           setUser(JSON.parse(storedUser));
+         }
+      }
+    });
+
+    // 2. Listener: Watch for auth changes (sign in, sign out, magic link click)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0]
+        };
+        handleLogin(userData);
+      } else {
+        // If we were logged in but now are not (and event wasn't initial load), clear state
+        // We check 'user' state to avoid unnecessary clears on load
+        if (localStorage.getItem(USER_STORAGE_KEY)) {
+           handleLogout();
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // When user changes, load their projects from the cloud
@@ -241,21 +293,6 @@ const App: React.FC = () => {
     // Only strictly relevant for local storage mode
     const usage = await getStorageUsage();
     setStorageUsage(usage);
-  };
-
-  const handleLogin = async (userData: User) => {
-    setUser(userData);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-    // The useEffect will trigger loadProjects
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    setProjects([]);
-    setSelectedProjectId(null);
-    setMediaUrl(null);
-    setViewMode('dashboard');
   };
 
   // Helper to process incoming files (from drop or select)
@@ -522,12 +559,7 @@ const App: React.FC = () => {
     return (
       <Layout user={null} onLogout={() => {}} currentView='dashboard' onChangeView={() => {}}>
         <Auth onLogin={() => {
-           // We pass a dummy user here because Auth handles the actual login via Supabase
-           // and calls onLogin when done. But Auth component needs refactoring if we want to pass the user object back.
-           // However, for now Auth just calls onLogin(). We can reload the user from local storage or fetch.
-           // Wait, Auth logic in Auth.tsx doesn't pass user back. Let's rely on listener or just simple reload.
-           // Actually, the best way in this architecture is to have Auth fetch the user and pass it.
-           // But since Auth uses supabase.auth, we can get the user immediately.
+           // Auth handled by listener mostly, but for immediate login without reload:
            supabase.auth.getUser().then(({ data }) => {
               if (data.user) {
                  const userData: User = { 
