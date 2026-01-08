@@ -117,6 +117,7 @@ const App: React.FC = () => {
 
   // --- User State ---
   const [user, setUser] = useState<User | null>(null);
+  const [isHandlingAuth, setIsHandlingAuth] = useState(false);
   
   // --- Project State ---
   const [projects, setProjects] = useState<Project[]>([]);
@@ -159,6 +160,7 @@ const App: React.FC = () => {
   
   const handleLogin = (userData: User) => {
     setUser(userData);
+    setIsHandlingAuth(false);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
   };
 
@@ -173,6 +175,11 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // 0. Check if we are handling a redirect from email
+    if (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
+      setIsHandlingAuth(true);
+    }
+
     // 1. Initial Check: See if we have a session (handles redirect from email link)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -190,6 +197,12 @@ const App: React.FC = () => {
          const storedUser = localStorage.getItem(USER_STORAGE_KEY);
          if (storedUser) {
            setUser(JSON.parse(storedUser));
+           setIsHandlingAuth(false);
+         } else {
+           // Not logged in and not handling auth
+           if (!window.location.hash.includes('access_token')) {
+             setIsHandlingAuth(false);
+           }
          }
       }
     });
@@ -552,6 +565,19 @@ const App: React.FC = () => {
         speakerMap={selectedProject.speakerMap}
         onBack={() => setViewMode('dashboard')} 
       />
+    );
+  }
+
+  // Handle Auth Loading State for Email Links
+  if (isHandlingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8">
+           <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-4" />
+           <h2 className="text-lg font-bold text-slate-900">Verifying Credentials...</h2>
+           <p className="text-slate-500 mt-2">Finishing your login. This should only take a moment.</p>
+        </div>
+      </div>
     );
   }
 

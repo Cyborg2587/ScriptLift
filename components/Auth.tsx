@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { upsertProfile } from '../services/userService';
-import { Loader2, AlertCircle, ArrowLeft, Mail } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Mail, Info } from 'lucide-react';
 
 interface AuthProps {
   onLogin: () => void;
@@ -14,7 +14,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<React.ReactNode | null>(null);
+
+  // Helper to get the clean current URL without hash or query params
+  const getRedirectUrl = () => {
+    const url = new URL(window.location.href);
+    return `${url.protocol}//${url.host}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +28,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setError(null);
     setMessage(null);
 
+    const redirectUrl = getRedirectUrl();
+
     try {
       if (view === 'reset') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
         });
         if (error) throw error;
         setMessage("If an account exists with this email, you will receive a password reset link shortly.");
@@ -44,8 +52,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           password,
           options: {
             data: { name: name || email.split('@')[0] },
-            // Important: This ensures the email link points back to this specific app URL
-            emailRedirectTo: window.location.origin, 
+            // Explicitly use the current window location to ensure the link works for this specific session/port
+            emailRedirectTo: redirectUrl, 
           }
         });
 
@@ -53,13 +61,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
         // If session is null, it means email confirmation is required
         if (data.user && !data.session) {
-          setMessage("Account created! Please check your email to confirm your account before logging in.");
+          setMessage(
+            <div className="flex flex-col gap-1">
+              <span>Account created! Please check your email to confirm your account.</span>
+              <span className="text-xs opacity-75 mt-1">
+                Note: The link in the email will redirect to <b>{redirectUrl}</b>. Ensure this app is running at that address when you click it.
+              </span>
+            </div>
+          );
           setLoading(false);
           return;
         }
 
         if (data.user && data.session) {
-          // Create profile entry only if we have a valid session
           try {
             await upsertProfile({
               id: data.user.id,
@@ -67,10 +81,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               name: name || email.split('@')[0],
             });
           } catch (profileErr) {
-            console.error("Profile creation failed (check if 'profiles' table exists in Supabase):", profileErr);
+            console.error("Profile creation failed:", profileErr);
           }
           
-          alert("Account created! You are now logged in.");
           onLogin();
         }
       }
@@ -102,15 +115,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         {/* Feedback Messages */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            {error}
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
         
         {message && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
-            <Mail className="w-4 h-4" />
-            {message}
+          <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-start gap-2">
+            <Mail className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>{message}</div>
           </div>
         )}
 
