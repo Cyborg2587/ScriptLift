@@ -1,0 +1,5 @@
+{
+  "name": "ScriptLift",
+  "description": "A privacy-focused, free-to-use media transcription service. Convert audio and video to text or PDF with customizable timestamps using advanced AI.",
+  "requestFramePermissions": []
+}
