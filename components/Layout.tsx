@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../types';
-import { LogOut, FileText, LayoutDashboard } from 'lucide-react';
+import { LogOut, FileText, LayoutDashboard, Heart, X, ExternalLink } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +11,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, onChangeView }) => {
+  const [showDonateModal, setShowDonateModal] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
@@ -57,20 +59,15 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
                 </button>
               </>
             ) : (
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-sm text-slate-500 italic">Free & Open Source</span>
-                <form action="https://www.paypal.com/donate" method="post" target="_top">
-                  <input type="hidden" name="hosted_button_id" value="Q9N2HEP6LF96W" />
-                  <input 
-                    type="image" 
-                    src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" 
-                    name="submit" 
-                    title="PayPal - The safer, easier way to pay online!" 
-                    alt="Donate with PayPal button" 
-                    className="h-6"
-                  />
-                  <img alt="" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
-                </form>
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Free & Open Source</span>
+                <button
+                  onClick={() => setShowDonateModal(true)}
+                  className="flex items-center gap-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors"
+                >
+                  <Heart className="w-4 h-4 fill-amber-500 text-amber-500" />
+                  <span>Support Us</span>
+                </button>
               </div>
             )}
           </div>
@@ -78,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow flex flex-col">
+      <main className="flex-grow flex flex-col relative z-0">
         {children}
       </main>
 
@@ -93,6 +90,67 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
           </div>
         </div>
       </footer>
+
+      {/* Donation Modal */}
+      {showDonateModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowDonateModal(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 border-b border-orange-100">
+              <button 
+                onClick={() => setShowDonateModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex justify-center mb-4">
+                <div className="bg-white p-3 rounded-full shadow-sm ring-4 ring-orange-100">
+                   <Heart className="w-8 h-8 text-amber-500 fill-amber-500" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-center text-slate-900">Support ScriptLift</h3>
+              <p className="text-center text-slate-600 text-sm mt-2">
+                Your donation helps keep this tool free and open source for everyone.
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="space-y-4">
+                <p className="text-sm text-slate-500 text-center leading-relaxed">
+                  We rely on community support to cover server costs and API fees. 
+                  Even a small coffee's worth makes a difference!
+                </p>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center gap-3">
+                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Secure Payment via PayPal</span>
+                   
+                   {/* PayPal Form - Opens in New Tab */}
+                   <form action="https://www.paypal.com/donate" method="post" target="_blank" className="w-full">
+                    <input type="hidden" name="hosted_button_id" value="Q9N2HEP6LF96W" />
+                    <button 
+                      type="submit" 
+                      className="w-full bg-[#FFC439] hover:bg-[#F4BB29] text-slate-900 font-bold py-3 px-4 rounded-xl shadow-sm transition-transform active:scale-[0.98] flex items-center justify-center gap-2 group"
+                    >
+                      <span>Donate with PayPal</span>
+                      <ExternalLink className="w-4 h-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                    <img alt="" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
+                  </form>
+                </div>
+                
+                <button 
+                  onClick={() => setShowDonateModal(false)}
+                  className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  Maybe later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

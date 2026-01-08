@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { upsertProfile } from '../services/userService';
-import { Loader2, AlertCircle, ArrowLeft, Mail, Info } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Mail } from 'lucide-react';
 
 interface AuthProps {
   onLogin: () => void;
@@ -46,49 +46,55 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         if (error) throw error;
         onLogin();
       } else {
-        // SIGN UP
+        // --- SIGN UP LOGIC ---
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { name: name || email.split('@')[0] },
-            // Explicitly use the current window location to ensure the link works for this specific session/port
             emailRedirectTo: redirectUrl, 
           }
         });
 
         if (error) throw error;
 
-        // If session is null, it means email confirmation is required
-        if (data.user && !data.session) {
-          setMessage(
-            <div className="flex flex-col gap-1">
-              <span>Account created! Please check your email to confirm your account.</span>
-              <span className="text-xs opacity-75 mt-1">
-                Note: The link in the email will redirect to <b>{redirectUrl}</b>. Ensure this app is running at that address when you click it.
-              </span>
-            </div>
-          );
-          setLoading(false);
-          return;
-        }
-
+        // CHECK 1: Immediate Session (Email Confirmation Disabled in Supabase)
         if (data.user && data.session) {
           try {
+            // Attempt to create profile immediately
             await upsertProfile({
               id: data.user.id,
               email: data.user.email!,
               name: name || email.split('@')[0],
             });
-          } catch (profileErr) {
-            console.error("Profile creation failed:", profileErr);
+            // Proceed to login
+            onLogin();
+            return;
+          } catch (profileErr: any) {
+             console.error("Profile creation warning:", profileErr);
+             // Even if profile fails (maybe exists?), allow login if auth worked
+             onLogin(); 
+             return;
           }
-          
-          onLogin();
+        }
+
+        // CHECK 2: No Session (Email Confirmation Enabled in Supabase)
+        if (data.user && !data.session) {
+          setMessage(
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold">Account created successfully!</span>
+              <span>Please check your email to confirm your account.</span>
+              <span className="text-xs opacity-75 mt-2 pt-2 border-t border-green-200">
+                <b>Tip:</b> If you want immediate access without email confirmation, the site administrator must disable "Confirm Email" in the Supabase dashboard.
+              </span>
+            </div>
+          );
+          setLoading(false);
         }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      console.error("Auth Error:", err);
+      setError(err.message || 'An error occurred during authentication.');
     } finally {
       setLoading(false);
     }
