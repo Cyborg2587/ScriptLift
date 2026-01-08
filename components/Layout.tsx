@@ -13,11 +13,24 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, onChangeView }) => {
   const [showDonateModal, setShowDonateModal] = useState(false);
 
+  const DonateWidget = () => (
+    <div className="flex flex-col items-center">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Free & Open Source</span>
+      <button
+        onClick={() => setShowDonateModal(true)}
+        className="flex items-center gap-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors"
+      >
+        <Heart className="w-4 h-4 fill-amber-500 text-amber-500" />
+        <span>Support Us</span>
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => user && onChangeView('dashboard')}>
               <div className="bg-indigo-600 p-2 rounded-lg">
@@ -43,6 +56,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
             )}
           </div>
           
+          {/* Center Donate Button (Only when logged in) */}
+          {user && (
+            <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+               <DonateWidget />
+            </div>
+          )}
+          
           <div className="flex items-center gap-4">
             {user ? (
               <>
@@ -59,16 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
                 </button>
               </>
             ) : (
-              <div className="flex flex-col items-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Free & Open Source</span>
-                <button
-                  onClick={() => setShowDonateModal(true)}
-                  className="flex items-center gap-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors"
-                >
-                  <Heart className="w-4 h-4 fill-amber-500 text-amber-500" />
-                  <span>Support Us</span>
-                </button>
-              </div>
+              <DonateWidget />
             )}
           </div>
         </div>
@@ -94,8 +105,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
       {/* Donation Modal */}
       {showDonateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowDonateModal(false)}></div>
+          
+          {/* Modal Content */}
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 border-b border-orange-100">
               <button 
@@ -111,7 +126,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
               </div>
               <h3 className="text-xl font-bold text-center text-slate-900">Support ScriptLift</h3>
               <p className="text-center text-slate-600 text-sm mt-2">
-                Your donation helps keep this tool free and open source for everyone.
+                Your donation helps keep this tool free and open source.
               </p>
             </div>
 
@@ -120,17 +135,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentView, 
               <div className="space-y-4">
                 <p className="text-sm text-slate-500 text-center leading-relaxed">
                   We rely on community support to cover server costs and API fees. 
-                  Even a small coffee's worth makes a difference!
+                  Donations are processed securely by PayPal in a new window, so you don't lose your place here.
                 </p>
 
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center gap-3">
                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Secure Payment via PayPal</span>
                    
-                   {/* PayPal Form - Opens in New Tab */}
+                   {/* PayPal Form - Opens in New Tab (target="_blank") to keep app open */}
                    <form action="https://www.paypal.com/donate" method="post" target="_blank" className="w-full">
                     <input type="hidden" name="hosted_button_id" value="Q9N2HEP6LF96W" />
                     <button 
                       type="submit" 
+                      onClick={() => setTimeout(() => setShowDonateModal(false), 2000)} // Auto-close modal after click
                       className="w-full bg-[#FFC439] hover:bg-[#F4BB29] text-slate-900 font-bold py-3 px-4 rounded-xl shadow-sm transition-transform active:scale-[0.98] flex items-center justify-center gap-2 group"
                     >
                       <span>Donate with PayPal</span>
